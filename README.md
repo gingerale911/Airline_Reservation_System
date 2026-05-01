@@ -11,7 +11,7 @@
 ## Overview
 **Manipal Airlines** is a premium, boutique-style airline reservation system built with Django. It features a highly refined charcoal and amber color palette, editorial-grade typography, and boarding-pass-inspired UI components. The platform offers a cohesive, high-end user experience, combining rich visual design with advanced interactive features like dynamic geospatial mapping, intelligent price prediction, and real-time interactive seat selection.
 
-## ✨ Key Features
+## Key Features
 
 - **Sophisticated Boutique Design**: A departure from generic themes. It features a bespoke charcoal and amber aesthetic with glassmorphic elements and smooth micro-animations.
 - **Interactive Seat Selection**: A responsive, visual seat map allowing users to pinpoint their exact seats. It strictly enforces selection rules based on the number of passengers, class capacity (Economy/Business), and existing bookings.
@@ -21,14 +21,14 @@
 - **Comprehensive Booking Lifecycle**: Full user flow from flight search, class selection, passenger detail entry, to a dedicated **"My Bookings"** dashboard for managing flights.
 - **User Authentication**: Secure robust registration, login, and profile management capabilities.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend:** Python, Django
 - **Frontend:** HTML5, Vanilla CSS, Vanilla JavaScript
 - **Database:** SQLite (default)
 - **Data Visualization & Mapping:** Leaflet.js, Chart.js
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 .
@@ -43,7 +43,7 @@
 └── manage.py              # Django execution script
 ```
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### Prerequisites
 - **Python 3.8+** installed on your system.
