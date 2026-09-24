@@ -1,58 +1,100 @@
 # Manipal Airlines
 
-Manipal Airlines is a Django reservation system with two independent LangGraph agents. Both agents use the same SQLite-backed Django models, so operational decisions made by the Management Agent are immediately visible to the conversational Booking Agent.
+Manipal Airlines is a Django-based flight booking system with two LangGraph agents connected to the same SQLite-backed data model. The project combines a customer-facing booking assistant with an autonomous operations agent that keeps inventory, discounts, and scheduling updates current.
 
-## What The Agents Do
+## Overview
 
-### Management Agent
+The application includes:
 
-The management graph accepts `schedule`, `loyalty`, or `report`:
+- A searchable flight booking experience built in Django.
+- A conversational booking agent that interprets natural-language requests.
+- A management agent that handles automated operational workflows.
+- APScheduler jobs for recurring tasks such as flight generation, discount assignment, and reporting.
+- Shared discount logic so operational updates are immediately visible in the booking flow.
 
-- `schedule` creates the next day's sample routes without duplicating flight numbers, then removes expired flights or deactivates flights with bookings.
-- `loyalty` finds frequent and inactive flyers, assigns one active loyalty or re-engagement discount per user, and logs a notification stub.
-- `report` returns a compact operational summary.
+## Booking Agent
 
-Run it directly from the project directory:
+The booking workflow is implemented in `agents/booking_agent/agent.py` and uses a LangGraph pipeline:
 
-```bash
-python manage.py shell -c "from agents.management_agent import run_management_agent; print(run_management_agent('report'))"
-```
+1. Parse the user’s natural-language request.
+2. Search matching flights.
+3. Fetch active discounts for the customer.
+4. Apply the best available discount to each flight option.
+5. Rank flights and return a plain-English response.
 
-### Booking Agent
-
-`run_booking_agent(user_id, query)` parses a natural-language request, searches available flights, applies the user's best active discount, ranks the results, and returns a plain-English response.
+Example:
 
 ```python
 from agents.booking_agent import run_booking_agent
 
-result = run_booking_agent(1, "I want to fly from Mumbai to Delhi next weekend")
+result = run_booking_agent(1, "I want a flight from Mumbai to Delhi next weekend")
 print(result["response"])
 ```
 
-The parser uses Google AI Studio Gemini when `GOOGLE_API_KEY` is configured. Without a key, a deterministic local parser handles common routes and dates, which keeps tests and development offline.
+### What it does
 
-## Scheduling
+- Converts natural-language trip requests into structured search intents.
+- Finds flights by source, destination, date range, passenger count, and cabin class.
+- Reads the user’s active and unused discounts from the shared database layer.
+- Applies the best discount before presenting travel options.
+- Ranks flights and explains the most relevant choices to the user.
 
-APScheduler is configured in `agents/management_agent/scheduler.py`:
+### AI and fallback behavior
 
-- Daily at midnight: add tomorrow's flights and clean expired inventory.
-- Monday at 02:00: analyze flyers and assign discounts.
-- Daily at 06:00: generate a report.
+The booking agent uses Gemini from Google AI Studio when `GOOGLE_API_KEY` is configured. If no key is present, it falls back to a deterministic local parser for common route and date patterns so offline development and tests still work.
 
-Start the blocking scheduler with:
+## Automated Workflows
+
+The management agent in `agents/management_agent/agent.py` supports three actions:
+
+### `schedule`
+
+Creates the next day’s sample routes and removes stale flights.
+
+- Adds upcoming flights without duplicating existing flight numbers.
+- Removes expired flights or deactivates flights that are no longer valid.
+- Keeps the schedule fresh for the next operating window.
+
+### `loyalty`
+
+Reviews travel patterns and assigns loyalty-based discounts.
+
+- Identifies frequent flyers and inactive users.
+- Assigns one active loyalty or re-engagement discount per qualifying customer.
+- Notifies users about the newly issued discount.
+
+### `report`
+
+Generates a compact operational summary.
+
+- Counts flights added.
+- Counts flights removed or deactivated.
+- Summarizes discounts assigned during the run.
+
+## Scheduler
+
+The recurring automation lives in `agents/management_agent/scheduler.py`.
+
+Scheduled jobs include:
+
+- Daily flight refresh at the configured schedule time.
+- Weekly loyalty review and discount assignment.
+- Daily operations report generation.
+
+Start the scheduler with:
 
 ```bash
 python -m agents.management_agent.scheduler
 ```
 
-For production, run this process under a supervisor and ensure only one scheduler instance owns these jobs.
+This keeps the system operational without manual intervention, and the management agent updates the same database used by the booking experience.
 
 ## Setup
 
 ```bash
 cd "Manipal Airlines"
 python -m venv .venv
-source .venv/bin/activate       # Windows: .venv\\Scripts\\activate
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
@@ -65,26 +107,38 @@ export GOOGLE_API_KEY="your-google-ai-studio-key"
 export GEMINI_MODEL="gemini-2.0-flash"
 ```
 
-Never commit the key. If a key has been exposed in chat, shell history, or a repository, revoke it in Google AI Studio and create a replacement.
+Never commit API keys. If a key has ever been exposed, rotate it in Google AI Studio.
 
-## Test
+## Testing
 
 ```bash
 python manage.py test
 python manage.py check
 ```
 
-## Structure
+## Project Structure
 
 ```text
 Manipal Airlines/
 ├── agents/
-│   ├── booking_agent/       # Conversational search graph and pricing tools
-│   └── management_agent/    # Inventory, loyalty, reporting, and scheduler
-├── flights/                 # Django models, views, templates, and migrations
-├── shared/                  # Django bootstrap and agent configuration
-├── airline_project/         # Django settings and URL configuration
-└── manage.py
+│   ├── booking_agent/        # Natural-language flight search and pricing flow
+│   └── management_agent/     # Operational scheduling, loyalty logic, and reporting
+├── airline_project/          # Django settings and URL config
+├── flights/                  # Booking models, views, templates, and migrations
+├── shared/                   # Shared DB access and configuration helpers
+├── static/                   # Front-end CSS and JavaScript
+├── db.sqlite3                # Local SQLite database
+├── manage.py                 # Django management entry point
+├── requirements.txt          # Python dependencies
+├── project_context.md        # Project reference context
+├── capture.py                # Local capture utilities
+├── generate_report.py        # Reporting helper
+├── README.md                 # Project documentation
+└── .venv                     # Local virtual environment
 ```
 
-The shared `UserDiscount` model is the communication contract: the Management Agent writes discounts, and the Booking Agent reads active, unused discounts during search.
+## Architecture Notes
+
+- The shared `UserDiscount` model acts as the communication link between operations and customer booking logic.
+- Management tasks write discount and flight data to the same persistent store that the booking agent reads.
+- This makes the airline system operationally aware while still keeping the customer-facing interaction conversational and user-friendly.
