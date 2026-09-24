@@ -164,3 +164,27 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Profile: {self.user.username}"
+
+
+class UserDiscount(models.Model):
+    """
+    Discounts assigned to users by the Management Agent.
+    Read by the Booking Agent when computing flight prices.
+    """
+    REASON_CHOICES = [
+        ('loyalty', 'Loyalty Reward'),
+        ('re_engagement', 'Re-engagement Offer'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='discounts')
+    discount_pct = models.FloatField(help_text="Discount percentage (e.g. 15.0 for 15%)")
+    valid_until = models.DateField()
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES)
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.discount_pct}% for {self.user.username} ({self.reason})"
+
+    class Meta:
+        ordering = ['-created_at']
